@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+    <link rel="stylesheet" href="../css/style.css">
+    <script src="../js/functions.js"></script>
+</head>
+<body>
+    <div class="container">
+        
+        <div class="btn_container">
+            <button onclick="startGame()" class="btn home">Iniciar Jogo</button>
+        </div>
+        
+        <div class="modal">
+            <div class="quiz_container">
+                <div class="div_modelagem">
+                    <img id="teste" src="../assets/imagemModelagem.png" alt="">
+                </div>
+                <div class="question_container 1">
+                    <div class="main_question">
+                        <h2 id="question_level">Hard</h2>
+                        <p id="p_question"></p>
+                    </div>
+                    <div class="in_container">
+                        <input id='in_query' type="text" placeholder="Insira a query">
+                        <button onclick="executarQueryUsuario()">Executar query</button>
+                    </div>    
+                </div>
+            </div>
+        </div>
+        <div class="result_container" style="display: none;">
+        </div>
+    </div>
+</body>
+</html>
+<script>
+    
+    let perguntas_realizadas = []
+    let respostasCertas = 0;
+    let respostasErradas = 0;
+    in_query.value = '';
+    
+    function startGame(json)
+    {
+        let startButton = document.getElementsByClassName('btn_container')[0];
+        let modal = document.getElementsByClassName('modal')[0];
+    
+        startButton.style.display = 'none';
+        modal.style.display = 'flex';
+        pegarDadosPerguntas()
+    }
+
+    function createCard(json)
+    {
+        question_level.innerHTML = json[0].nivel;
+        p_question.innerHTML = json[0].pergunta;
+    }
+
+    function showQueryResult()
+    {
+        let modal = document.getElementsByClassName('modal');
+        
+        modal.style.display = 'none';
+
+    }
+
+    function pegarDadosPerguntas()
+    {
+        
+        if(perguntas_realizadas.length > 13)
+        {
+            alert('Perguntas encerradas');
+            alert(`Você acertou ${respostasCertas} perguntas e errou ${respostasErradas} perguntas`);
+            return 0;
+        }
+        
+        let idPergunta = parseInt(Math.random()*14)+2000;   
+        // Sorteando um número que seja diferente de alguma que já foi sorteado anteriormente.
+        for(let i = 0; perguntas_realizadas.indexOf(idPergunta) != -1;)
+        {
+            idPergunta = parseInt(Math.random()*14)+2000; 
+        }
+        
+        
+
+        fetch(`/game-selects/dados-perguntas/${idPergunta}`, {cache: 'no-store'})
+            .then((resposta) => {
+                
+                if(resposta.ok)
+                {
+                    resposta.json()
+                        .then(json => {
+                            console.log(json);
+                            console.log(JSON.stringify(json));
+                            createCard(json);
+                            executarQueryCorreta(json);
+                            perguntas_realizadas.push(idPergunta);
+                            sessionStorage.setItem('PERGUNTAS_REALIZADAS', JSON.stringify(perguntas_realizadas));
+                        })
+                }
+
+            })
+            .catch((erro) => {
+                console.log(erro);
+            })
+    }
+
+    
+
+    function executarQueryCorreta(json)
+    {
+        let selectCerto = json[0].selectCerto;
+
+        fetch('/game-selects/select-certo', {
+            method: 'POST',
+            headers: {
+                "Content-Type": "application/json"
+            },
+            body: JSON.stringify({
+                selectCertoServer: selectCerto
+            })
+        })
+            .then((resposta) => {
+                if(resposta.ok)
+                {
+                    resposta.json()
+                        .then(json => {
+                            console.log(json);
+                            console.log(JSON.stringify(json));
+
+                            let query = JSON.stringify(json);
+                            sessionStorage.QUERY = query;
+                        
+                        })
+                }
+            })
+            .catch((erro) => {
+                console.log(erro)
+            });
+    }
+
+    function executarQueryUsuario()
+    {
+
+        const queryUsuario = in_query.value;
+
+        if(queryUsuario == '')
+        {
+            alert('Escreva uma query');
+        }
+        else
+        {
+            fetch('/game-selects/select-usuario', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    selectUsuarioServer: queryUsuario
+                })
+            })
+            .then((resposta) =>{
+                    if(resposta.ok)
+                    {
+                        resposta.json()
+                            .then(json => {
+                                console.log(json);
+                                console.log(JSON.stringify(json));
+                                testarQueryUsuario(json);
+                            })
+                    }
+                })
+                .catch((erro) => {
+                    console.log(erro);
+                });
+                
+        }
+
+    }
+
+    function testarQueryUsuario(json)
+    {
+        if(JSON.stringify(json) == sessionStorage.QUERY)
+        {
+            alert('Tudo certo');
+            respostasCertas++;
+        }
+        else
+        {
+            alert('Tudo errado');
+            respostasErradas++;
+        }
+        in_query.value = '';
+        pegarDadosPerguntas();
+    }
+
+</script>
